@@ -48,11 +48,66 @@ namespace RC4_key_recovery_tool
             this.l = keyLength;
             
             ConstructInvS();
+
+
+            C = new int[N];
+            InvC = new int[N];
+            for (int i = 0; i < N; i++)
+            {
+                C[i] = mod(S[i] - i * (i + 1) / 2, N);
+                InvC[i] = mod(InvS[i] - i * (i + 1) / 2, N);
+            }
+
+            initializeCounters();
+            keyJ = getFirstSuggestions(keyJCounter);
         }
 
         public bool guessKey(int m, int nc, out int[] guessedKey)
         {
+            this.m = m;
+            this.nc = nc;
             guessedKey = new int[l];
+
+            allCombinations = new List<bool[]> { };
+            combinationsCount = Utils.Binomial(l, m);
+            generateCombinations(l, m);
+
+            for (int currSum = 0; currSum < Constants.sumAllKeyBytesDepth; currSum++)
+            {
+                s = sCandidates[currSum];
+                //double[,] counters = reduceC(s[d]);
+                currCounter = updateCounterWithAllSum();
+
+                for (int c = 0; c < combinationsCount; c++)
+                {
+                    bool[] fixedBytes = allCombinations.ElementAt(c);
+
+                    int[] currFixedKey = new int[l];
+                    Array.Copy(keyJ, currFixedKey, l);
+
+                    //number of update groups
+                    int updateGroupsCount = l / gl; 
+                    if (l % gl > 0) updateGroupsCount++;
+
+                    List<int[]>[] keySuggestions = new List<int[]>[updateGroupsCount];
+
+                    for (int i = 0; i < updateGroupsCount; i++)
+                    {
+                        int startingPosition = i * gl;
+                        List<int[]> keyPart = new List<int[]> { };
+
+                        updateGroup(startingPosition, startingPosition, fixedBytes, currFixedKey, keyPart);
+
+                        keySuggestions[i] = keyPart;
+                    }
+                    if (testKeys(0, updateGroupsCount, new int[l], keySuggestions))
+                    {
+                        guessedKey = recoveredKey;
+                        return true;
+                    }
+                }
+            }
+
             return false;
         }
 
@@ -434,13 +489,14 @@ namespace RC4_key_recovery_tool
 
         public bool testKey(int[] key)
         {
-            bool same = true;
+            int[] permutation = runKSA(key);
+
             for (int i = 0; i < l; i++)
             {
-                //if (cipher.K[i] != key[i]) same = false;
+                if (S[i] != permutation[i]) return false;
             }
 
-            return same;
+            return true;
         }
 
 
@@ -495,7 +551,24 @@ namespace RC4_key_recovery_tool
             return guess;
         }
 
-            /******** FOR j GUESSING **********/
+
+        int[] runKSA(int[] key)
+        {
+            int[] S = new int[Constants.N];
+
+            for (int i = 0; i < N; i++)
+            {
+                S[i] = i;
+            }
+            int j = 0;
+            for (int i = 0; i < N; i++)
+            {
+                j = (j + S[i] + key[i % l]) % N;
+                Swap(S, i, j);
+            }
+            return S;
+        }
+        /******** FOR j GUESSING **********/
 
         public int J(int round, int nesting, bool inverse)
         {

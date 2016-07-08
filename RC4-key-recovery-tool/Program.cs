@@ -93,6 +93,15 @@ namespace RC4_key_recovery_tool
             
         }
 
+        private static bool askQuestion(string message)
+        {
+            string option;
+            while (!readOption(new string[] { "y", "n" }, message + " Type [y/n]", out option)) ;
+
+            if (option == "n") return false;
+            return true;
+        }
+
         public static void Main(string[] args)
         {
             Console.SetIn(new StreamReader(Console.OpenStandardInput(8192)));
@@ -138,11 +147,17 @@ namespace RC4_key_recovery_tool
             int keyLength = readNumber("Please set KEY LENGHT. Type number from 1 to N.");
             Cracker attack = new Cracker(permutation, keyLength);
 
+            if (Constants.defaults[keyLength] != null)
+            {
+                Console.WriteLine("Default parameters for length {0} are (m,nc) = ({1},{2})",
+                    keyLength, Constants.defaults[keyLength].m, Constants.defaults[keyLength].nc);
+            }
+
             bool keyRetrieved = false;
             while(!keyRetrieved)
             {
-                int m = readNumber("Set number of key bytes to be fixed.");
-                int nc = readNumber("Set number of candidates for each non fixed key byte to be tried.");
+                int m = readNumber("Set m (number of key bytes to be fixed)");
+                int nc = readNumber("Set nc (number of candidates for each non fixed key byte to be tried)");
                 int[] key;
 
                 if (attack.guessKey(m, nc, out key))
@@ -154,10 +169,10 @@ namespace RC4_key_recovery_tool
                 {
                     Console.WriteLine("FAIL. Key retrieving were not successfull.");
                     string option;
-                    while (!readOption(new string[] { "y", "n" }, "Do you want change the parameters? Type [y/n]", out option)) ;
-
-                    if (option == "n") break;
                 }
+
+                if (!askQuestion("Do you want change the parameters?"))
+                    break;
                 
             }
 

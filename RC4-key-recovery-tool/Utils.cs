@@ -19,7 +19,7 @@ namespace RC4_key_recovery_tool
             Console.WriteLine();
         }
 
-        public int Binomial(int n, int k)
+        public static int Binomial(int n, int k)
         {
             if (k > n || n < 0)
             {
